@@ -39,3 +39,6 @@ jobs:
             cd /home/ubuntu/github/workspace
             tar -xzvf artifact.tar.gz
             ls -la
+            sudo rsync -anv . /etc/nginx
+            sudo chown root. -R /etc/nginx
+            sudo nginx -t
