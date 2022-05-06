@@ -28,7 +28,7 @@ jobs:
         with:
           name: My artifact
           path: "${{ github.workspace }}/artifact.tar.gz"
-      - name: executing remote ssh comands using ssh key
+      - name: nginx modified
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
@@ -39,6 +39,19 @@ jobs:
             cd /home/ubuntu/github/workspace
             tar -xzvf artifact.tar.gz
             ls -la
-            sudo rsync -anv . /etc/nginx
+            sudo rsync -av . /etc/nginx
             sudo chown root. -R /etc/nginx
             sudo nginx -t
+            sudo service nginx restart
+      - name: PHP-FPM modified
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd /home/ubuntu/github/workspace/server/php-fpm
+            sudo rsync -av . /etc/php/7.4/fpm
+            sudo chown root. -R /etc/php/7.4/fpm
+            sudo service php7.4-fpm restart
