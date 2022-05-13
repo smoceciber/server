@@ -14,6 +14,7 @@ jobs:
           mv artifact.tar.gz ${{ github.workspace }}
           cd ${{ github.workspace }}
           ls -la
+
       - name: copy file via ssh key
         uses: appleboy/scp-action@master
         with:
@@ -23,11 +24,13 @@ jobs:
           key: ${{ secrets.KEY }}
           source: "${{ github.workspace }}/artifact.tar.gz"
           target: "/home/ubuntu"
+
       - name: use the upload artifact github action
         uses: actions/upload-artifact@v3
         with:
           name: My artifact
           path: "${{ github.workspace }}/artifact.tar.gz"
+
       - name: nginx modified
         uses: appleboy/ssh-action@master
         with:
@@ -38,11 +41,12 @@ jobs:
           script: |
             cd /home/ubuntu/github/workspace
             tar -xzvf artifact.tar.gz
-            ls -la
-            sudo rsync -av . /etc/nginx
-            sudo chown root. -R /etc/nginx
+            cd /home/ubuntu/github/workspace/server/nginx
+            sudo rsync -av . /etc/nginx/
+            sudo chown root. -R /etc/nginx/
             sudo nginx -t
             sudo service nginx restart
+
       - name: PHP-FPM modified
         uses: appleboy/ssh-action@master
         with:
@@ -55,3 +59,48 @@ jobs:
             sudo rsync -av . /etc/php/7.4/fpm
             sudo chown root. -R /etc/php/7.4/fpm
             sudo service php7.4-fpm restart
+
+      - name: forward artifact to Backend
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            eval "$(ssh-agent -s)"
+            echo "${{ secrets.KEY }}" | tr -d '\r' | ssh-add -
+            ssh ${{ secrets.USERNAME }}@10.0.0.5 -T "mkdir -p /home/ubuntu/github/workspace"
+            scp /home/ubuntu/github/workspace/artifact.tar.gz ${{ secrets.USERNAME }}@10.0.0.5:/home/ubuntu/github/workspace
+            ssh ${{ secrets.USERNAME }}@10.0.0.5 -T "cd /home/ubuntu/github/workspace && tar -xzvf artifact.tar.gz"
+
+      - name: mysql modified
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            eval "$(ssh-agent -s)"
+            echo "${{ secrets.KEY }}" | tr -d '\r' | ssh-add -
+            ssh ${{ secrets.USERNAME }}@10.0.0.5 -T "cd /home/ubuntu/github/workspace/server/mysql \
+            && sudo rsync -av . /etc/mysql/ \
+            && sudo chown root. -R /etc/mysql/ \
+            && sudo service mysql restart"
+
+      - name: redis modified
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            eval "$(ssh-agent -s)"
+            echo "${{ secrets.KEY }}" | tr -d '\r' | ssh-add -
+            ssh ${{ secrets.USERNAME }}@10.0.0.5 -T "cd /home/ubuntu/github/workspace/server/redis \
+            && sudo rsync -av . /etc/redis/ \
+            && sudo chown redis. -R /etc/redis/* \
+            && sudo service redis restart"      
+            
